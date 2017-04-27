@@ -1,0 +1,9 @@
+{
+  "name": "CPChat",
+  "version": "0.0.1",
+  "dependencies": {
+    "body-parser": "latest",
+    "express": "latest",
+    "socket.io": "^1.7.3"
+  }
+}

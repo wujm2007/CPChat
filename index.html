@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script type="text/javascript" src="js/jquery-3.2.0.js"></script>
+    <script type="text/javascript" src="js/socket.io.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/vue.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
+
+    <style type="text/css">
+        .chatImg {
+            max-height: 200px;
+        }
+
+        #dialogue-container {
+            background-color: #9acfea;
+            height: 400px;
+            width: 400px;
+            overflow: auto;
+        }
+    </style>
+
+    <script type="text/javascript">
+        const SERVER_ADDR = 'http://192.168.31.44:8088';
+
+        $(document).ready(function () {
+            let socket = io.connect(SERVER_ADDR);
+            let nickName = "Default User";
+            socket.on('push message', function (msg) {
+                $('#dialogue-container').append($('<li>').text(msg.name + msg.time + msg.text));
+            });
+            socket.on('push base64 file', function (msg) {
+                $('#dialogue-container').append($('<img class="chatImg" src="' + msg + '"/>'));
+            });
+            socket.on('nameResult', function (msg) {
+                if (msg.success) {
+                    nickName = msg.name;
+                } else {
+                    $('#dialogue-container').append($('<li>').text("Rename failed, " + msg.message));
+                }
+            });
+            socket.on("message", function (msg) {
+                $('#dialogue-container').append($('<li>').text(msg.text));
+            });
+            socket.on("cls", function () {
+                $('#dialogue-container').html('');
+            });
+
+            $("#btnText").click(function () {
+                let inputText = $("input[name='chatText']");
+                if (inputText.val() !== null && inputText.val() !== "") {
+                    let words = inputText.val().split(' ');
+                    let command = words[0].toLowerCase();
+                    switch (command) {
+                        case '\\join':
+                            words.shift();
+                            let room = words.join(' ');
+                            socket.emit('roomAttempt', room);
+                            break;
+                        case '\\nick':
+                            words.shift();
+                            let name = words.join(' ');
+                            socket.emit('nameAttempt', name);
+                            break;
+                        default:
+                            socket.emit('send message', {
+                                name: nickName,
+                                text: inputText.val(),
+                                time: new Date().toLocaleString()
+                            });
+                            break;
+                    }
+                    inputText.val('');
+                }
+            });
+
+            $('#postImg').change(function () {
+                let files = $('#postImg')[0].files;
+                if (files.length !== 0) {
+                    let reader = new FileReader();
+                    reader.onload = function (evt) {
+                        let file = evt.target.result;
+                        socket.emit('base64 file', file);
+                    };
+                    reader.readAsDataURL(files[0]);
+                }
+            });
+
+            $("#chatText").keypress(function (e) {
+                if (e.ctrlKey && e.which === 13)
+                    $("#btnText").click();
+            });
+        });
+    </script>
+    <meta charset="UTF-8">
+    <title>Simple Chat</title>
+</head>
+<body>
+
+<div id="dialogue-container"></div>
+
+<div>
+    <input type="text" name="chatText" title="Chat Text" id="chatText">
+    <button id="btnText">↵</button>
+    <input type="file" name="file" id="postImg" style="display: none;"/>
+    <button type="button" class="file" id="selectImg" onclick="postImg.click()">Post Image</button>
+</div>
+
+</body>
+</html>
