@@ -1,22 +1,26 @@
-let express = require('express');
-let io = require('socket.io').listen(8088);
-let app = express();
+const Koa = require('koa');
+const app = new Koa();
+const io = require('socket.io').listen(8088);
+const fs = require('fs');
 
 let numGuest = 0;
 let nickNames = {};
 let namesUsed = new Set();
 let currentRoom = {};
 
-app.use(express.static('public'));
+app.use(require('koa-static')('public'));
 
-app.get('/', function (req, res) {
-    res.sendFile(__dirname + "/" + "index.html");
+app.use(async (ctx, next) => {
+    await next();
+    if ('/' === ctx.path) {
+        ctx.response.type = 'html';
+        ctx.response.body = fs.createReadStream('index.html');
+    }
 });
 
-const server = app.listen(8888,
-    function () {
-        let host = server.address().address;
-        let port = server.address().port;
+const server = app.listen(8888, () => {
+        const host = server.address().address;
+        const port = server.address().port;
         console.log("You can access this site via http://%s:%s", host, port);
     }
 );
@@ -28,7 +32,7 @@ function assignGuestName(socket) {
         nickNames[socket.id] = name;
         namesUsed.add(name);
     }
-    socket.emit("nameResult", {
+    socket.emit("name result", {
         success: true,
         name: name
     });
@@ -37,7 +41,7 @@ function assignGuestName(socket) {
 
 function changeName(socket, name) {
     if (name.startsWith("Guest")) {
-        socket.emit('nameResult', {
+        socket.emit('name result', {
             success: false,
             message: 'Names cannot begin with "Guest".'
         });
@@ -47,7 +51,7 @@ function changeName(socket, name) {
             namesUsed.add(name);
             nickNames[socket.id] = name;
             namesUsed.delete(previousName);
-            socket.emit('nameResult', {
+            socket.emit('name result', {
                 success: true,
                 name: name
             });
@@ -55,7 +59,7 @@ function changeName(socket, name) {
                 text: previousName + ' is now known as ' + name + '.'
             });
         } else {
-            socket.emit('nameResult', {
+            socket.emit('name result', {
                 success: false,
                 message: 'That name is already in use.'
             });
@@ -83,10 +87,10 @@ io.on('connection', function (socket) {
     socket.on('base64 file', function (file) {
         io.sockets.in(currentRoom[socket.id]).emit('push base64 file', file);
     });
-    socket.on('nameAttempt', function (name) {
+    socket.on('name attempt', function (name) {
         changeName(socket, name);
     });
-    socket.on('roomAttempt', function (room) {
+    socket.on('room attempt', function (room) {
         joinRoom(socket, room);
     });
 });

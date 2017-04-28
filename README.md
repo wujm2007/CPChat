@@ -10,6 +10,7 @@ A dummy chat web application implemented on node.js. (Following an example in [N
 2. Input the following command in terminal:
 
    ```shell
+   npm install
    node server
    ```
 

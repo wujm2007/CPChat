@@ -4,7 +4,7 @@
     <script type="text/javascript" src="js/jquery-3.2.0.js"></script>
     <script type="text/javascript" src="js/socket.io.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="js/vue.js"></script>
+    <!--<script type="text/javascript" src="js/vue.js"></script>-->
     <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
 
     <style type="text/css">
@@ -21,7 +21,7 @@
     </style>
 
     <script type="text/javascript">
-        const SERVER_ADDR = 'http://192.168.31.44:8088';
+        const SERVER_ADDR = 'http://10.221.84.2:8088';
 
         $(document).ready(function () {
             let socket = io.connect(SERVER_ADDR);
@@ -32,7 +32,7 @@
             socket.on('push base64 file', function (msg) {
                 $('#dialogue-container').append($('<img class="chatImg" src="' + msg + '"/>'));
             });
-            socket.on('nameResult', function (msg) {
+            socket.on('name result', function (msg) {
                 if (msg.success) {
                     nickName = msg.name;
                 } else {
@@ -55,12 +55,12 @@
                         case '\\join':
                             words.shift();
                             let room = words.join(' ');
-                            socket.emit('roomAttempt', room);
+                            socket.emit('room attempt', room);
                             break;
                         case '\\nick':
                             words.shift();
                             let name = words.join(' ');
-                            socket.emit('nameAttempt', name);
+                            socket.emit('name attempt', name);
                             break;
                         default:
                             socket.emit('send message', {
