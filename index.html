@@ -3,9 +3,6 @@
 <head>
     <script type="text/javascript" src="js/jquery-3.2.0.js"></script>
     <script type="text/javascript" src="js/socket.io.js"></script>
-    <script type="text/javascript" src="js/bootstrap.min.js"></script>
-    <!--<script type="text/javascript" src="js/vue.js"></script>-->
-    <link rel="stylesheet" type="text/css" href="css/bootstrap.css"/>
 
     <style type="text/css">
         .chatImg {
@@ -21,7 +18,7 @@
     </style>
 
     <script type="text/javascript">
-        const SERVER_ADDR = 'http://10.221.84.2:8088';
+        const SERVER_ADDR = 'http://10.221.138.32:8088';
 
         $(document).ready(function () {
             let socket = io.connect(SERVER_ADDR);
@@ -95,6 +92,7 @@
     <meta charset="UTF-8">
     <title>Simple Chat</title>
 </head>
+
 <body>
 
 <div id="dialogue-container"></div>
