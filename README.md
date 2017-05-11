@@ -9,8 +9,8 @@ A dummy chat web application implemented on node.js. (Following an example in [N
 
 2. Change the working directory and input the following command in terminal:
    ```shell
-   webpack client.js public/js/bundle.js
    npm install
+   webpack client.js public/js/bundle.js
    node server
    ```
 
