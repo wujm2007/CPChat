@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script type="text/javascript" src="js/jquery-3.2.0.js"></script>
-    <script type="text/javascript" src="js/socket.io.js"></script>
+    <script type="text/javascript" src="js/bundle.js"></script>
 
     <style type="text/css">
         .chatImg {
@@ -17,78 +16,6 @@
         }
     </style>
 
-    <script type="text/javascript">
-        const SERVER_ADDR = 'http://10.221.138.32:8088';
-
-        $(document).ready(function () {
-            let socket = io.connect(SERVER_ADDR);
-            let nickName = "Default User";
-            socket.on('push message', function (msg) {
-                $('#dialogue-container').append($('<li>').text(msg.name + msg.time + msg.text));
-            });
-            socket.on('push base64 file', function (msg) {
-                $('#dialogue-container').append($('<img class="chatImg" src="' + msg + '"/>'));
-            });
-            socket.on('name result', function (msg) {
-                if (msg.success) {
-                    nickName = msg.name;
-                } else {
-                    $('#dialogue-container').append($('<li>').text("Rename failed, " + msg.message));
-                }
-            });
-            socket.on("message", function (msg) {
-                $('#dialogue-container').append($('<li>').text(msg.text));
-            });
-            socket.on("cls", function () {
-                $('#dialogue-container').html('');
-            });
-
-            $("#btnText").click(function () {
-                let inputText = $("input[name='chatText']");
-                if (inputText.val() !== null && inputText.val() !== "") {
-                    let words = inputText.val().split(' ');
-                    let command = words[0].toLowerCase();
-                    switch (command) {
-                        case '\\join':
-                            words.shift();
-                            let room = words.join(' ');
-                            socket.emit('room attempt', room);
-                            break;
-                        case '\\nick':
-                            words.shift();
-                            let name = words.join(' ');
-                            socket.emit('name attempt', name);
-                            break;
-                        default:
-                            socket.emit('send message', {
-                                name: nickName,
-                                text: inputText.val(),
-                                time: new Date().toLocaleString()
-                            });
-                            break;
-                    }
-                    inputText.val('');
-                }
-            });
-
-            $('#postImg').change(function () {
-                let files = $('#postImg')[0].files;
-                if (files.length !== 0) {
-                    let reader = new FileReader();
-                    reader.onload = function (evt) {
-                        let file = evt.target.result;
-                        socket.emit('base64 file', file);
-                    };
-                    reader.readAsDataURL(files[0]);
-                }
-            });
-
-            $("#chatText").keypress(function (e) {
-                if (e.ctrlKey && e.which === 13)
-                    $("#btnText").click();
-            });
-        });
-    </script>
     <meta charset="UTF-8">
     <title>Simple Chat</title>
 </head>
