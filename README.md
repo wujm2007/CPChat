@@ -5,11 +5,11 @@ A dummy chat web application implemented on node.js. (Following an example in [N
 
 ## How to Run?
 
-1. Change `SERVER_ADDR` in `index.html`.
+1. Change `SERVER_ADDR` in `client.js`.
 
-2. Input the following command in terminal:
-
+2. Change the working directory and input the following command in terminal:
    ```shell
+   webpack client.js public/js/bundle.js
    npm install
    node server
    ```
