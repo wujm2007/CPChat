@@ -3,10 +3,11 @@
 <head>
     <script type="text/javascript" src="js/bundle.js"></script>
 
+
     <style type="text/css">
-        .chatImg {
-            max-height: 200px;
-        }
+        /*.chatImg {*/
+        /*max-height: 200px;*/
+        /*}*/
 
         #dialogue-container {
             background-color: #9acfea;
@@ -25,10 +26,13 @@
 <div id="dialogue-container"></div>
 
 <div>
+    <select id="userList">
+    </select>
+
     <input type="text" name="chatText" title="Chat Text" id="chatText">
     <button id="btnText">↵</button>
-    <input type="file" name="file" id="postImg" style="display: none;"/>
-    <button type="button" class="file" id="selectImg" onclick="postImg.click()">Post Image</button>
+    <input type="file" name="file" id="post" style="display: none;"/>
+    <button type="button" class="file" id="selectFile" onclick="post.click()">Post File</button>
 </div>
 
 </body>

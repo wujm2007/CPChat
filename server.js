@@ -16,6 +16,10 @@ nicknames.getSocketId = function (nickname) {
             return key;
 };
 
+function getSessionKey(sockedId) {
+    return sockedId;
+}
+
 app.use(require('koa-static')('public'));
 
 app.use(async (ctx, next) => {
@@ -90,33 +94,56 @@ function sendToRoom(room, type, msg) {
     io.sockets.in(room).emit(type, msg);
 }
 
+function sendLiveList() {
+    io.sockets.emit('user list', Array.from(nicknames.values()));
+}
+
 function sendToSocket(socketId, type, msg) {
     if (socketId) {
         msg.encrypted = true;
-        msg.text = CryptoUtil.AES256Cipher(msg.text, socketId);
+        if (msg.text)
+            msg.text = CryptoUtil.AES256Cipher(msg.text, getSessionKey(socketId));
+        if (msg.data)
+            msg.data = CryptoUtil.AES256Cipher(msg.data, getSessionKey(socketId));
         io.to(socketId).emit(type, msg);
     }
 }
 
 io.on('connection', function (socket) {
-    let address = socket.request.connection.remoteAddress;
     let name = assignGuestName(socket);
+    sendLiveList();
     joinRoom(socket, "Lobby");
     socket.on('chat', function (message) {
         sendToRoom(currentRoom[socket.id], 'push message', message);
     });
     socket.on('whisper', function (message) {
-        let recipient = message.recipient;
-        let socketId = nicknames.getSocketId(recipient);
-        sendToSocket(socketId, 'push message', message)
+        const sessionKey = getSessionKey(socket.id);
+        if (message.encrypted)
+            message.text = CryptoUtil.AES256Decipher(message.text, sessionKey);
+        let recipientId = nicknames.getSocketId(message.recipient);
+        sendToSocket(recipientId, 'push message', message)
     });
-    socket.on('base64 file', function (file) {
-        sendToRoom(currentRoom[socket.id], 'push base64 file', file);
+    socket.on('base64 chat', function (file) {
+        sendToRoom(currentRoom[socket.id], 'push base64', file);
+    });
+    socket.on('base64 whisper', function (file) {
+        const sessionKey = getSessionKey(socket.id);
+        if (file.encrypted)
+            file.data = CryptoUtil.AES256Decipher(file.data, sessionKey);
+        let recipientId = nicknames.getSocketId(file.recipient);
+        sendToSocket(recipientId, 'push base64', file);
     });
     socket.on('name attempt', function (name) {
         changeName(socket, name);
     });
     socket.on('room attempt', function (room) {
         joinRoom(socket, room);
+    });
+    socket.on('disconnect', function () {
+        sendToRoom(currentRoom[socket.id], 'message', {
+            text: currentRoom[socket.id] + " : Bye " + nicknames.get(socket.id) + "."
+        });
+        nicknames.delete(socket.id);
+        sendLiveList();
     });
 });
