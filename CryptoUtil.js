@@ -23,25 +23,28 @@ function genRSAKeyPair() {
     return new NodeRSA({b: 512});
 }
 
+function importKey(pem) {
+    return new NodeRSA(pem);
+}
+
+function randomBytes() {
+    return crypto.randomBytes(48);
+}
+
+function generateSessionKey(sub1, sub2) {
+    return sub1.toString('base64') + sub2.toString('base64');
+}
+
+function hashcode(data) {
+    return crypto.createHash('md5').update(data).digest('hex');
+}
+
 module.exports = {
     AES256Cipher: AES256Cipher,
     AES256Decipher: AES256Decipher,
-    genRSAKeyPair: genRSAKeyPair
+    generateRSAKeyPair: genRSAKeyPair,
+    importKey: importKey,
+    randomBytes: randomBytes,
+    generateSessionKey: generateSessionKey,
+    hashcode: hashcode
 };
-
-// const key = new NodeRSA({b: 512});
-//
-// console.log(key.exportKey('private'));
-// console.log(key.exportKey('public'));
-//
-// const text = 'Hello RSA!';
-// const encrypted = key.encrypt(text, 'base64', 'utf8');
-// console.log('encrypted: ', encrypted);
-// const decrypted = key.decrypt(encrypted, 'utf8');
-// console.log('decrypted: ', decrypted);
-//
-//
-// const signed = key.sign(text, 'base64', 'utf8');
-// console.log('signed: ', signed);
-// const verified = key.verify(text, signed, 'utf8', 'base64');
-// console.log('verified: ', verified);

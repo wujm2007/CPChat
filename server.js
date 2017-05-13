@@ -5,10 +5,21 @@ const fs = require('fs');
 
 const CryptoUtil = require("./CryptoUtil");
 
+const KEY = CryptoUtil.importKey(`-----BEGIN RSA PRIVATE KEY-----
+MIIBOwIBAAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3mrVSIqUXrNoK7k38md/9
+vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQJAHuAjMLQmLURmpBatXOr1
+YMd28cSqMRcYrtMjZQhxc+n/J9OIvBerdbvN7RxG3sGX5/Eca97JQTuGhV3hGtcb
+nQIhANoUS9tMW6yNtUW8ub00xkiYx6dQ0Qms/TIn+NVwIyC/AiEAoOBwLykmzVGa
+GIb3wWP8Li06dYet4qYjlzFfqpYqQvsCIHXhHLPYjYEzRDYC8p9shHW/Z8RwMd46
+DM7svluY9tP/AiEAjwc7dhJmFwDHuaq1NtDH8d3wLXHVXL5Mwiz5WtZq+GUCIQCr
+XacabSW3LnrN7kQ4K5WAFTToouTvgZPDmlbc02ejlQ==
+-----END RSA PRIVATE KEY-----`);
+
 let numGuest = 0;
 let nicknames = new Map();
 let namesUsed = new Set();
 let currentRoom = {};
+let sessionKeys = new Map();
 
 nicknames.getSocketId = function (nickname) {
     for (let [key, value] of nicknames)
@@ -17,7 +28,7 @@ nicknames.getSocketId = function (nickname) {
 };
 
 function getSessionKey(sockedId) {
-    return sockedId;
+    return sessionKeys.get(sockedId);
 }
 
 app.use(require('koa-static')('public'));
@@ -110,9 +121,42 @@ function sendToSocket(socketId, type, msg) {
 }
 
 io.on('connection', function (socket) {
+
+    console.log('user connect: ' + socket.id);
+
     let name = assignGuestName(socket);
-    sendUserList();
     joinRoom(socket, "Lobby");
+    sendUserList();
+
+    socket.on('client hello', function (msg) {
+        // console.log("hello from client");
+        const data = eval('(' + KEY.decrypt(msg.data, 'utf8') + ')');
+        const clientKey = CryptoUtil.importKey(data.key);
+        const hash = clientKey.decryptPublic(msg.signature, 'utf8');
+        const randomBytes = CryptoUtil.randomBytes();
+
+        if (CryptoUtil.hashcode(msg.data) === hash) {
+            const sessionKey = CryptoUtil.generateSessionKey(Buffer.from(data.bytes), randomBytes);
+            sessionKeys.set(socket.id, sessionKey);
+
+            const newData = clientKey.encrypt({
+                bytes: randomBytes,
+                n: data.n - 1
+            }, 'base64');
+
+            const newSignature = KEY.encryptPrivate(CryptoUtil.hashcode(newData), 'base64');
+
+            socket.emit('server hello', {
+                    data: newData,
+                    signature: newSignature
+                }
+            );
+            // console.log("sessionKey:", getSessionKey(socket.id));
+            return;
+        }
+        console.log("invalid client hello");
+    });
+
     socket.on('chat', function (message) {
         sendToRoom(currentRoom[socket.id], 'push message', message);
     });
