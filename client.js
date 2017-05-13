@@ -1,5 +1,5 @@
 //main.js
-const SERVER_ADDR = 'http://10.221.84.2:8088';
+const SERVER_ADDR = 'http://10.189.82.1:8088';
 
 const $ = require("jquery");
 const cryptoUtil = require('./CryptoUtil.js');
@@ -8,6 +8,7 @@ const socket = io(SERVER_ADDR);
 
 window.AES256Cipher = cryptoUtil.AES256Cipher;
 window.AES256Decipher = cryptoUtil.AES256Decipher;
+window.genRSAKeyPair = cryptoUtil.genRSAKeyPair;
 
 $(document).ready(function () {
 
@@ -16,6 +17,14 @@ $(document).ready(function () {
     let getSessionKey = function () {
         return socket.id;
     };
+
+    function append(element) {
+        $('#dialogue-container').append($('<li>').append(element));
+    }
+
+    function createDownload(fileName, blob) {
+        return $('<a>').text(fileName).attr('href', URL.createObjectURL(blob)).attr('download', fileName);
+    }
 
     let nickName = "Default User";
 
@@ -26,27 +35,30 @@ $(document).ready(function () {
     socket.on('push message', function (msg) {
         if (msg.encrypted)
             msg.text = window.AES256Decipher(msg.text, getSessionKey());
-        $('#dialogue-container').append($('<li>').text(msg.sender + ": " + msg.text + " (" + msg.time + ")"));
+        append($('<span>').text(msg.sender + ": " + msg.text + " (" + msg.time + ")"));
     });
 
     socket.on('push base64', function (file) {
         if (file.encrypted)
             file.data = window.AES256Decipher(file.data, getSessionKey());
-        // $('#dialogue-container').append($('<img class="chatImg" src="' + file.data + '"/>'));
+        // append($('<img class="chatImg" src="' + file.data + '"/>'));
         fetch(file.data).then(res => res.blob()).then(blob => {
-            $('#dialogue-container').append($('<li><a href="' + URL.createObjectURL(blob) + '" download="' + file.name + '">' + file.name + '</a></li>'));
+            append(createDownload(file.name, blob));
         });
     });
+
     socket.on('name result', function (msg) {
         if (msg.success) {
             nickName = msg.name;
         } else {
-            $('#dialogue-container').append($('<li>').text("Rename failed, " + msg.message));
+            append($('<span>').text("Rename failed, " + msg.message));
         }
     });
+
     socket.on("message", function (msg) {
-        $('#dialogue-container').append($('<li>').text(msg.text));
+        append($('<span>').text(msg.text));
     });
+
     socket.on("user list", function (msg) {
         const userList = $('#userList');
         const selected = userList.val();
@@ -57,6 +69,7 @@ $(document).ready(function () {
         if (selected)
             userList.val(selected);
     });
+
     socket.on("cls", function () {
         $('#dialogue-container').html('');
     });

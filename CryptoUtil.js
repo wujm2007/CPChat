@@ -3,6 +3,7 @@
  */
 
 const crypto = require('crypto');
+const NodeRSA = require('node-rsa');
 
 function AES256Cipher(plainText, key) {
     const cipher = crypto.createCipher('aes256', key);
@@ -18,5 +19,29 @@ function AES256Decipher(encrypted, key) {
     return decrypted;
 }
 
-module.exports.AES256Cipher = AES256Cipher;
-module.exports.AES256Decipher = AES256Decipher;
+function genRSAKeyPair() {
+    return new NodeRSA({b: 512});
+}
+
+module.exports = {
+    AES256Cipher: AES256Cipher,
+    AES256Decipher: AES256Decipher,
+    genRSAKeyPair: genRSAKeyPair
+};
+
+// const key = new NodeRSA({b: 512});
+//
+// console.log(key.exportKey('private'));
+// console.log(key.exportKey('public'));
+//
+// const text = 'Hello RSA!';
+// const encrypted = key.encrypt(text, 'base64', 'utf8');
+// console.log('encrypted: ', encrypted);
+// const decrypted = key.decrypt(encrypted, 'utf8');
+// console.log('decrypted: ', decrypted);
+//
+//
+// const signed = key.sign(text, 'base64', 'utf8');
+// console.log('signed: ', signed);
+// const verified = key.verify(text, signed, 'utf8', 'base64');
+// console.log('verified: ', verified);

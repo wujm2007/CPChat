@@ -19,6 +19,7 @@ node_modules/
 tmp/
 temp/
 $RECYCLE.BIN/
+/public/js/bundle.js
 
 .DS_Store
 Thumbs.db

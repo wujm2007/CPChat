@@ -94,7 +94,7 @@ function sendToRoom(room, type, msg) {
     io.sockets.in(room).emit(type, msg);
 }
 
-function sendLiveList() {
+function sendUserList() {
     io.sockets.emit('user list', Array.from(nicknames.values()));
 }
 
@@ -111,7 +111,7 @@ function sendToSocket(socketId, type, msg) {
 
 io.on('connection', function (socket) {
     let name = assignGuestName(socket);
-    sendLiveList();
+    sendUserList();
     joinRoom(socket, "Lobby");
     socket.on('chat', function (message) {
         sendToRoom(currentRoom[socket.id], 'push message', message);
@@ -144,6 +144,6 @@ io.on('connection', function (socket) {
             text: currentRoom[socket.id] + " : Bye " + nicknames.get(socket.id) + "."
         });
         nicknames.delete(socket.id);
-        sendLiveList();
+        sendUserList();
     });
 });
