@@ -1,7 +1,7 @@
-const Koa = require('koa');
+const Koa = require("koa");
 const app = new Koa();
-const io = require('socket.io').listen(8088);
-const fs = require('fs');
+const io = require("socket.io").listen(8088);
+const fs = require("fs");
 
 const CryptoUtil = require("./CryptoUtil");
 
@@ -31,13 +31,13 @@ function getSessionKey(sockedId) {
     return sessionKeys.get(sockedId);
 }
 
-app.use(require('koa-static')('public'));
+app.use(require("koa-static")("public"));
 
 app.use(async (ctx, next) => {
     await next();
-    if ('/' === ctx.path) {
-        ctx.response.type = 'html';
-        ctx.response.body = fs.createReadStream('index.html');
+    if ("/" === ctx.path) {
+        ctx.response.type = "html";
+        ctx.response.body = fs.createReadStream("index.html");
     }
 });
 
@@ -64,9 +64,9 @@ function assignGuestName(socket) {
 
 function changeName(socket, name) {
     if (name.startsWith("Guest")) {
-        socket.emit('name result', {
+        socket.emit("name result", {
             success: false,
-            message: 'Names cannot begin with "Guest".'
+            message: "Names cannot begin with \"Guest\"."
         });
     } else {
         if (!namesUsed.has(name)) {
@@ -74,17 +74,17 @@ function changeName(socket, name) {
             namesUsed.add(name);
             nicknames.set(socket.id, name);
             namesUsed.delete(previousName);
-            socket.emit('name result', {
+            socket.emit("name result", {
                 success: true,
                 name: name
             });
-            sendToRoom(currentRoom[socket.id], 'message', {
-                text: previousName + ' is now known as ' + name + '.'
+            sendToRoom(currentRoom[socket.id], "message", {
+                text: previousName + " is now known as " + name + "."
             });
         } else {
-            socket.emit('name result', {
+            socket.emit("name result", {
                 success: false,
-                message: 'That name is already in use.'
+                message: "That name is already in use."
             });
         }
     }
@@ -96,7 +96,7 @@ function joinRoom(socket, room) {
     currentRoom[socket.id] = room;
     socket.emit("cls");
 
-    sendToRoom(currentRoom[socket.id], 'message', {
+    sendToRoom(currentRoom[socket.id], "message", {
         text: currentRoom[socket.id] + " : Welcome " + nicknames.get(socket.id) + "."
     });
 }
@@ -106,7 +106,7 @@ function sendToRoom(room, type, msg) {
 }
 
 function sendUserList() {
-    io.sockets.emit('user list', Array.from(nicknames.values()));
+    io.sockets.emit("user list", Array.from(nicknames.values()));
 }
 
 function sendToSocket(socketId, type, msg) {
@@ -120,19 +120,18 @@ function sendToSocket(socketId, type, msg) {
     }
 }
 
-io.on('connection', function (socket) {
+io.on("connection", function (socket) {
 
-    console.log('user connect: ' + socket.id);
+    console.log("user connect: " + socket.id);
 
     let name = assignGuestName(socket);
     joinRoom(socket, "Lobby");
     sendUserList();
 
-    socket.on('client hello', function (msg) {
-        // console.log("hello from client");
-        const data = eval('(' + KEY.decrypt(msg.data, 'utf8') + ')');
+    socket.on("client hello", function (msg) {
+        const data = JSON.parse(KEY.decrypt(msg.data, "utf8"));
         const clientKey = CryptoUtil.importKey(data.key);
-        const hash = clientKey.decryptPublic(msg.signature, 'utf8');
+        const hash = clientKey.decryptPublic(msg.signature, "utf8");
         const randomBytes = CryptoUtil.randomBytes();
 
         if (CryptoUtil.hashcode(msg.data) === hash) {
@@ -142,49 +141,48 @@ io.on('connection', function (socket) {
             const newData = clientKey.encrypt({
                 bytes: randomBytes,
                 n: data.n - 1
-            }, 'base64');
+            }, "base64");
 
-            const newSignature = KEY.encryptPrivate(CryptoUtil.hashcode(newData), 'base64');
+            const newSignature = KEY.encryptPrivate(CryptoUtil.hashcode(newData), "base64");
 
-            socket.emit('server hello', {
+            socket.emit("server hello", {
                     data: newData,
                     signature: newSignature
                 }
             );
-            // console.log("sessionKey:", getSessionKey(socket.id));
             return;
         }
         console.log("invalid client hello");
     });
 
-    socket.on('chat', function (message) {
-        sendToRoom(currentRoom[socket.id], 'push message', message);
+    socket.on("chat", function (message) {
+        sendToRoom(currentRoom[socket.id], "push message", message);
     });
-    socket.on('whisper', function (message) {
+    socket.on("whisper", function (message) {
         const sessionKey = getSessionKey(socket.id);
         if (message.encrypted)
             message.text = CryptoUtil.AES256Decipher(message.text, sessionKey);
         let recipientId = nicknames.getSocketId(message.recipient);
-        sendToSocket(recipientId, 'push message', message)
+        sendToSocket(recipientId, "push message", message)
     });
-    socket.on('base64 chat', function (file) {
-        sendToRoom(currentRoom[socket.id], 'push base64', file);
+    socket.on("base64 chat", function (file) {
+        sendToRoom(currentRoom[socket.id], "push base64", file);
     });
-    socket.on('base64 whisper', function (file) {
+    socket.on("base64 whisper", function (file) {
         const sessionKey = getSessionKey(socket.id);
         if (file.encrypted)
             file.data = CryptoUtil.AES256Decipher(file.data, sessionKey);
         let recipientId = nicknames.getSocketId(file.recipient);
-        sendToSocket(recipientId, 'push base64', file);
+        sendToSocket(recipientId, "push base64", file);
     });
-    socket.on('name attempt', function (name) {
+    socket.on("name attempt", function (name) {
         changeName(socket, name);
     });
-    socket.on('room attempt', function (room) {
+    socket.on("room attempt", function (room) {
         joinRoom(socket, room);
     });
-    socket.on('disconnect', function () {
-        sendToRoom(currentRoom[socket.id], 'message', {
+    socket.on("disconnect", function () {
+        sendToRoom(currentRoom[socket.id], "message", {
             text: currentRoom[socket.id] + " : Bye " + nicknames.get(socket.id) + "."
         });
         nicknames.delete(socket.id);
