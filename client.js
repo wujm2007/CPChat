@@ -1,4 +1,4 @@
-const SERVER_ADDR = "http://192.168.31.44:8088";
+const SERVER_ADDR = "http://45.78.16.129:8088";
 
 const $ = require("jquery");
 const cryptoUtil = require("./CryptoUtil.js");
@@ -25,12 +25,17 @@ $(function () {
     };
 
     function append(element) {
-        $("#dialogue-container").append(element);
+        const container = $("#dialogue-container");
+        container.append(element);
+        const containerDiv = container.parent();
+        containerDiv.scrollTop(containerDiv[0].scrollHeight);
     }
 
     function getAvatar(user) {
-        console.log("user: " + user);
-        return "images/avatar2.jpeg"
+        if (user === nickName())
+            return "images/avatar1.jpeg";
+        else
+            return "images/avatar2.jpeg";
     }
 
     function createMessage(user, text) {
@@ -223,7 +228,13 @@ $(function () {
     });
 
     $("#chatText").keypress(function (e) {
-        if (e.ctrlKey && e.which === 13)
-            $("#btnText").click();
+        if (e.which === 13) {
+            e.preventDefault();
+            if (e.ctrlKey) {
+                const inputText = $("#chatText");
+                inputText.val(inputText.val() + "\n");
+            } else
+                $("#btnText").click();
+        }
     });
 });

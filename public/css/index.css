@@ -52,11 +52,11 @@ ul {
 }
 
 #chat .m-message {
-    height: calc(100% - 10pc);
+    height: calc(100% - 17em);
 }
 
 .m-text {
-    height: 2in;
+    height: 14em;
     margin-right: 19px;
     border-top: 1px solid #d6d6d6;
 }
@@ -150,6 +150,7 @@ ul {
     line-height: 30px;
     margin: 0 19px;
     padding: 10px 0;
+    height: 3em;
 }
 
 #chat .main .m-text .toolbar {
