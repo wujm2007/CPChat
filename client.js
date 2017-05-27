@@ -25,14 +25,44 @@ $(function () {
     };
 
     function append(element) {
-        $("#dialogue-container").append($("<li>").append(element));
+        $("#dialogue-container").append(element);
     }
 
-    function createDownload(fileName, blob) {
-        return $("<a>").text(fileName).attr("href", URL.createObjectURL(blob)).attr("download", fileName);
+    function getAvatar(user) {
+        console.log("user: " + user);
+        return "images/avatar2.jpeg"
     }
 
-    let nickName = "Default User";
+    function createMessage(user, text) {
+        const li = $("<li>");
+        // li.append($("<p>").addClass("time").append($("<span>").text("10:45")));
+        const div = $("<div>");
+        if (user === nickName())
+            div.addClass("main self");
+        else
+            div.addClass("main");
+        div.append($("<img>").addClass("avatar").attr('src', getAvatar(user))).append($("<div>").addClass("text").html(text));
+        li.append(div);
+        return li;
+    }
+
+    function createMsg(text) {
+        const li = $("<li>");
+        li.addClass("alert").append($("<span>").text(text));
+        return li;
+    }
+
+    function createDownload(sender, fileName, blob) {
+        return createMessage(sender, $("<a>").text(fileName).attr("href", URL.createObjectURL(blob)).attr("download", fileName));
+    }
+
+    let __nickName = "Default User";
+
+    function nickName(newName) {
+        if (newName)
+            __nickName = newName;
+        return __nickName;
+    }
 
     socket.on("connect", function () {
         console.log("connected to server: " + socket.id);
@@ -66,26 +96,31 @@ $(function () {
     socket.on("push message", function (msg) {
         if (msg.encrypted)
             msg.text = cryptoUtil.AES256Decipher(msg.text, getSessionKey());
-        append($("<span>").text(msg.sender + ": " + msg.text + " (" + msg.time + ")"));
+        append(createMessage(msg.sender, msg.text));
     });
 
     socket.on("push base64", function (file) {
         if (file.encrypted)
             file.data = cryptoUtil.AES256Decipher(file.data, getSessionKey());
         fetch(file.data).then((res) => res.blob()).then((blob) => {
-            append(createDownload(file.name, blob));
+            append(createDownload(file.sender, file.name, blob));
         });
     });
 
-    socket.on("name result", function (msg) {
-        if (msg.success)
-            nickName = msg.name;
+    socket.on("name result", function (data) {
+        if (data.success) {
+            if (data.oldName === nickName() || !data.oldName) {
+                nickName(data.newName);
+                append(createMsg("Your name is now " + data.newName));
+            } else
+                append(createMsg(data.oldName + " is now known as " + data.newName));
+        }
         else
-            append($("<span>").text("Rename failed, " + msg.message));
+            append(createMsg("Rename failed, " + data.message));
     });
 
     socket.on("message", function (msg) {
-        append($("<span>").text(msg.text));
+        append(createMsg(msg.text));
     });
 
     socket.on("user list", function (msg) {
@@ -93,19 +128,26 @@ $(function () {
         const selected = userList.val();
         userList.empty().append("<option value=" + broadcast + ">" + broadcast + "</option>");
         msg.forEach((m) => userList.append("<option value=" + m + ">" + m + "</option>"));
-        if (selected)
+        if (msg.includes(selected))
             userList.val(selected);
+        else
+            userList.val(broadcast);
     });
 
-    socket.on("cls", function () {
-        $("#dialogue-container").html("");
+    socket.on("join-room", function (data) {
+        if (data.success) {
+            $("#dialogue-container").html("");
+            $("#room-name").text(data.room);
+        } else {
+            append(createMsg("Join " + data.room + " failed."));
+        }
     });
 
     $("#btnText").click(function () {
         const selectedUser = $("#userList").val();
-        const inputText = $("input[name=chatText]");
+        const inputText = $("#chatText");
         if (inputText.val() !== null && inputText.val() !== "") {
-            let words = inputText.val().split("");
+            let words = inputText.val().split(" ");
             let command = words[0].toLowerCase();
             switch (command) {
                 case "\\join":
@@ -119,21 +161,25 @@ $(function () {
                     socket.emit("name attempt", name);
                     break;
                 default:
-                    let message = words.join("");
+                    let message = words.join(" ");
                     if (selectedUser === broadcast) {
                         socket.emit("chat", {
-                            sender: nickName,
+                            sender: nickName(),
                             text: message,
                             time: new Date().toLocaleString()
                         });
                     } else {
-                        socket.emit("whisper", {
-                            encrypted: true,
-                            recipient: selectedUser,
-                            sender: nickName,
-                            text: cryptoUtil.AES256Cipher(message, getSessionKey()),
-                            time: new Date().toLocaleString()
-                        });
+                        if (selectedUser !== nickName()) {
+                            console.log(selectedUser, nickName(), selectedUser === nickName());
+                            socket.emit("whisper", {
+                                encrypted: true,
+                                recipient: selectedUser,
+                                sender: nickName(),
+                                text: cryptoUtil.AES256Cipher(message, getSessionKey()),
+                                time: new Date().toLocaleString()
+                            });
+                        }
+                        append(createMessage(nickName(), message));
                     }
             }
             inputText.val("");
@@ -146,26 +192,30 @@ $(function () {
         if (files.length !== 0) {
             let reader = new FileReader();
             reader.onload = function (evt) {
-                let file = evt.target.result;
+                const data = evt.target.result;
+                const fileName = files[0].name;
                 if (selectedUser === broadcast) {
                     socket.emit("base64 chat", {
-                            sender: nickName,
-                            name: files[0].name,
-                            data: file,
+                            name: fileName,
+                            data: data,
                             time: new Date().toLocaleString()
                         }
                     );
                 }
                 else {
-                    socket.emit("base64 whisper", {
-                            encrypted: true,
-                            sender: nickName,
-                            recipient: selectedUser,
-                            name: files[0].name,
-                            data: cryptoUtil.AES256Cipher(file, getSessionKey()),
-                            time: new Date().toLocaleString()
-                        }
-                    );
+                    if (selectedUser !== nickName()) {
+                        socket.emit("base64 whisper", {
+                                encrypted: true,
+                                recipient: selectedUser,
+                                name: fileName,
+                                data: cryptoUtil.AES256Cipher(data, getSessionKey()),
+                                time: new Date().toLocaleString()
+                            }
+                        );
+                    }
+                    fetch(data).then((res) => res.blob()).then((blob) => {
+                        append(createDownload(nickName(), fileName, blob));
+                    });
                 }
             };
             reader.readAsDataURL(files[0]);

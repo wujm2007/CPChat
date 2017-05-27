@@ -57,7 +57,7 @@ function assignGuestName(socket) {
     }
     socket.emit("name result", {
         success: true,
-        name: name
+        newName: name
     });
     return name;
 }
@@ -70,17 +70,16 @@ function changeName(socket, name) {
         });
     } else {
         if (!namesUsed.has(name)) {
-            let previousName = nicknames.get(socket.id);
+            let oldName = nicknames.get(socket.id);
             namesUsed.add(name);
             nicknames.set(socket.id, name);
-            namesUsed.delete(previousName);
-            socket.emit("name result", {
+            namesUsed.delete(oldName);
+            sendToRoom(currentRoom[socket.id], "name result", {
                 success: true,
-                name: name
+                oldName: oldName,
+                newName: name
             });
-            sendToRoom(currentRoom[socket.id], "message", {
-                text: previousName + " is now known as " + name + "."
-            });
+            sendUserList();
         } else {
             socket.emit("name result", {
                 success: false,
@@ -94,7 +93,11 @@ function joinRoom(socket, room) {
     socket.leave(currentRoom[socket.id]);
     socket.join(room);
     currentRoom[socket.id] = room;
-    socket.emit("cls");
+
+    socket.emit("join-room", {
+        success: true,
+        room: currentRoom[socket.id]
+    });
 
     sendToRoom(currentRoom[socket.id], "message", {
         text: currentRoom[socket.id] + " : Welcome " + nicknames.get(socket.id) + "."
@@ -166,10 +169,12 @@ io.on("connection", function (socket) {
         sendToSocket(recipientId, "push message", message)
     });
     socket.on("base64 chat", function (file) {
+        file.sender = nicknames.get(socket.id);
         sendToRoom(currentRoom[socket.id], "push base64", file);
     });
     socket.on("base64 whisper", function (file) {
         const sessionKey = getSessionKey(socket.id);
+        file.sender = nicknames.get(socket.id);
         if (file.encrypted)
             file.data = CryptoUtil.AES256Decipher(file.data, sessionKey);
         let recipientId = nicknames.getSocketId(file.recipient);

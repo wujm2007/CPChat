@@ -1,38 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+
 <head>
-    <script type="text/javascript" src="js/bundle.js"></script>
-
-
-    <style type="text/css">
-        /*.chatImg {*/
-        /*max-height: 200px;*/
-        /*}*/
-
-        #dialogue-container {
-            background-color: #9acfea;
-            height: 400px;
-            width: 400px;
-            overflow: auto;
-        }
-    </style>
-
     <meta charset="UTF-8">
-    <title>Simple Chat</title>
+    <title>CPChat</title>
+    <script type=text/javascript src="js/bundle.js"></script>
+    <link rel="stylesheet" href="css/index.css">
 </head>
 
 <body>
-
-<div id="dialogue-container"></div>
-
-<div>
-    <select id="userList"></select>
-
-    <input type="text" name="chatText" title="Chat Text" id="chatText">
-    <button id="btnText">↵</button>
-    <input type="file" name="file" id="post" style="display: none;"/>
-    <button type="button" class="file" id="selectFile" onclick="post.click()">Post File</button>
+<div id="chat">
+    <div class="main">
+        <div class="m-header">
+            <span id="room-name">Room</span>
+        </div>
+        <div class="m-message">
+            <ul id="dialogue-container">
+                <li>
+                    <p class="time"><span>10:44</span></p>
+                    <div class="main"><img class="avatar" src="images/avatar2.jpeg">
+                        <div class="text">啦啦啦</div>
+                    </div>
+                </li>
+                <li>
+                    <p class="time"><span>10:45</span></p>
+                    <div class="main self"><img class="avatar" src="images/avatar1.jpeg">
+                        <div class="text">嘿嘿</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <div class="m-text">
+            <div class="toolbar" id="tool_bar">
+                <a>
+                    <div class="webuploader-pick"></div>
+                    <div style="display: inline-block;">
+                        <input type="file" name="file" id="post" style="line-height: 30px;"
+                               class="webuploader-element-invisible">
+                        <label class="file-icon" onclick="post.click()"></label>
+                    </div>
+                </a>
+                <select id="userList" style="display: inline-block;"></select>
+            </div>
+            <textarea id="chatText"></textarea>
+            <div class="action">
+                <span class="desc">按下Cmd+Enter换行</span>
+                <a class="btn btn_send" id="btnText">发送</a>
+            </div>
+        </div>
+    </div>
 </div>
-
 </body>
+<script>
+    // You can also require other files to run in this process
+    require('./renderer.js')
+</script>
 </html>

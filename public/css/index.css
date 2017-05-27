@@ -1,0 +1,218 @@
+*, :after, :before {
+    box-sizing: border-box;
+}
+
+body, html {
+    overflow: hidden;
+    height: 100%;
+}
+
+body {
+    background: #f5f5f5 url(../images/bg.jpg) no-repeat center;
+    background-size: cover;
+    color: #4d4d4d;
+    font-family: Helvetica Neue, Helvetica, Hiragino Sans GB, Microsoft YaHei, \\5fae\8F6F\96c5\9ED1, Arial, sans-serif;
+    font-size: 10pt;
+}
+
+.m-message ul li div.main .avatar {
+    width: 32px;
+    height: 32px;
+}
+
+body, ul {
+    margin: 0;
+    padding: 0;
+}
+
+ul {
+    list-style: none;
+}
+
+#chat {
+    overflow: hidden;
+    width: 95%;
+    height: 95%;
+    border-radius: 3px;
+    margin: 1.5% auto 3.5%;
+}
+
+#chat .main {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    background-color: #eee;
+}
+
+#chat .m-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+}
+
+#chat .m-message {
+    height: calc(100% - 10pc);
+}
+
+.m-text {
+    height: 2in;
+    margin-right: 19px;
+    border-top: 1px solid #d6d6d6;
+}
+
+.m-text textarea {
+    width: 100%;
+    height: calc(100% - 90px);
+    outline: 0;
+    border: none;
+    background-color: #eee;
+    resize: none;
+    padding: 10px;
+}
+
+.m-message {
+    overflow-y: scroll;
+    padding: 10px 15px;
+}
+
+.m-message li {
+    margin-bottom: 15px;
+}
+
+.m-message .time, .alert {
+    text-align: center;
+    margin: 7px 0;
+}
+
+.m-message .time > span, .alert > span {
+    display: inline-block;
+    border-radius: 2px;
+    background-color: #dcdcdc;
+    color: #fff;
+    font-size: 9pt;
+    padding: 0 18px;
+}
+
+.m-message .avatar {
+    float: left;
+    border-radius: 3px;
+    margin: 0 10px 0 0;
+}
+
+.m-message .text {
+    position: relative;
+    display: inline-block;
+    max-width: calc(100% - 40px);
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: #fafafa;
+    text-align: left;
+    line-height: 2.5;
+    word-break: break-all;
+    padding: 0 10px;
+}
+
+.m-message .text:before {
+    position: absolute;
+    top: 9px;
+    right: 100%;
+    border: 6px solid transparent;
+    content: " ";
+    border-right-color: #fafafa;
+}
+
+.m-message .self {
+    text-align: right;
+}
+
+.m-message .self .avatar {
+    float: right;
+    margin: 0 0 0 10px;
+}
+
+.m-message .self .text {
+    background-color: #b2e281;
+}
+
+.m-message .self .text:before {
+    right: inherit;
+    left: 100%;
+    border-right-color: transparent;
+    border-left-color: #b2e281;
+}
+
+.m-header {
+    position: relative;
+    border-bottom: 1px solid #d6d6d6;
+    background-color: #eee;
+    text-align: center;
+    line-height: 30px;
+    margin: 0 19px;
+    padding: 10px 0;
+}
+
+#chat .main .m-text .toolbar {
+    height: 40px;
+    padding: 5px 17px;
+}
+
+.webuploader-element-invisible {
+    position: absolute;
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+.file-icon {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    background: url(../images/icon.png) no-repeat scroll 0 0 transparent;
+    cursor: pointer;
+}
+
+.action {
+    margin-top: 5px;
+    padding-right: 19px;
+    height: 30px;
+    text-align: right;
+}
+
+.btn {
+    display: inline-block;
+    border: 1px solid #c1c1c1;
+    border-radius: 4px;
+    font-size: 14px;
+    padding: 3px 20px;
+}
+
+.btn_send {
+    padding-right: 30px;
+    padding-left: 30px;
+    background-color: #fff;
+    color: #222;
+}
+
+.btn_send:hover {
+    background-color: #f8f8f8;
+    cursor: pointer;
+}
+
+a, button, input, textarea {
+    outline: 0;
+}
+
+.desc {
+    margin-right: 7px;
+    margin-left: 10px;
+    color: #888;
+    font-size: 9pt;
+}
+
+#chatText {
+    padding-left: 19px;
+    white-space: pre-wrap;
+    word-break: normal;
+    font-family: inherit;
+    font-size: inherit;
+    margin: 0;
+}
