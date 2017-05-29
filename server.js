@@ -3,7 +3,7 @@ const app = new Koa();
 const io = require("socket.io").listen(8088);
 const fs = require("fs");
 
-const CryptoUtil = require("./CryptoUtil");
+const CryptoUtil = require("./cryptoUtil");
 
 const KEY = CryptoUtil.importKey(`-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3mrVSIqUXrNoK7k38md/9
@@ -55,7 +55,7 @@ function assignGuestName(socket) {
         nicknames.set(socket.id, name);
         namesUsed.add(name);
     }
-    socket.emit("name result", {
+    sendToSocket(socket.id, "name-result", {
         success: true,
         newName: name
     });
@@ -64,7 +64,7 @@ function assignGuestName(socket) {
 
 function changeName(socket, name) {
     if (name.startsWith("Guest")) {
-        socket.emit("name result", {
+        sendToSocket(socket.id, "name-result", {
             success: false,
             message: "Names cannot begin with \"Guest\"."
         });
@@ -74,14 +74,14 @@ function changeName(socket, name) {
             namesUsed.add(name);
             nicknames.set(socket.id, name);
             namesUsed.delete(oldName);
-            sendToRoom(currentRoom[socket.id], "name result", {
+            sendToRoom(currentRoom[socket.id], "name-result", {
                 success: true,
                 oldName: oldName,
                 newName: name
             });
             sendUserList();
         } else {
-            socket.emit("name result", {
+            sendToSocket(socket.id, "name-result", {
                 success: false,
                 message: "That name is already in use."
             });
@@ -94,7 +94,7 @@ function joinRoom(socket, room) {
     socket.join(room);
     currentRoom[socket.id] = room;
 
-    socket.emit("join-room", {
+    sendToSocket(socket.id, "join-room", {
         success: true,
         room: currentRoom[socket.id]
     });
@@ -104,23 +104,35 @@ function joinRoom(socket, room) {
     });
 }
 
-function sendToRoom(room, type, msg) {
-    io.sockets.in(room).emit(type, msg);
+function sendToRoom(room, type, data) {
+    io.sockets.in(room).emit(type, {payload: JSON.stringify(data)});
 }
 
 function sendUserList() {
-    io.sockets.emit("user list", Array.from(nicknames.values()));
+    io.sockets.emit("user-list", Array.from(nicknames.values()));
 }
 
-function sendToSocket(socketId, type, msg) {
-    if (socketId) {
-        msg.encrypted = true;
-        if (msg.text)
-            msg.text = CryptoUtil.AES256Cipher(msg.text, getSessionKey(socketId));
-        if (msg.data)
-            msg.data = CryptoUtil.AES256Cipher(msg.data, getSessionKey(socketId));
-        io.to(socketId).emit(type, msg);
+function wrapData(data, key) {
+    const wrappedData = {payload: JSON.stringify(data)};
+    if (key) {
+        wrappedData.encrypted = true;
+        wrappedData.payload = CryptoUtil.AES256Cipher(wrappedData.payload, key);
     }
+    return wrappedData;
+}
+
+function sendToSocket(socketId, type, data) {
+    if (socketId)
+        io.to(socketId).emit(type, wrapData(data, getSessionKey(socketId)));
+}
+
+function handle(data, socketId) {
+    if (data.payload) {
+        if (data.encrypted)
+            return JSON.parse(CryptoUtil.AES256Decipher(data.payload, getSessionKey(socketId)));
+        return JSON.parse(data.payload);
+    }
+    else return data;
 }
 
 io.on("connection", function (socket) {
@@ -131,25 +143,25 @@ io.on("connection", function (socket) {
     joinRoom(socket, "Lobby");
     sendUserList();
 
-    socket.on("client hello", function (msg) {
-        const data = JSON.parse(KEY.decrypt(msg.data, "utf8"));
-        const clientKey = CryptoUtil.importKey(data.key);
-        const hash = clientKey.decryptPublic(msg.signature, "utf8");
+    socket.on("client-hello", function (data) {
+        const payload = JSON.parse(KEY.decrypt(data.payload, "utf8"));
+        const clientKey = CryptoUtil.importKey(payload.key);
+        const hash = clientKey.decryptPublic(data.signature, "utf8");
         const randomBytes = CryptoUtil.randomBytes();
 
-        if (CryptoUtil.hashcode(msg.data) === hash) {
-            const sessionKey = CryptoUtil.generateSessionKey(Buffer.from(data.bytes), randomBytes);
+        if (CryptoUtil.hashcode(data.payload) === hash) {
+            const sessionKey = CryptoUtil.generateSessionKey(Buffer.from(payload.bytes), randomBytes);
             sessionKeys.set(socket.id, sessionKey);
 
             const newData = clientKey.encrypt({
                 bytes: randomBytes,
-                n: data.n - 1
+                n: payload.n - 1
             }, "base64");
 
             const newSignature = KEY.encryptPrivate(CryptoUtil.hashcode(newData), "base64");
 
-            socket.emit("server hello", {
-                    data: newData,
+            socket.emit("server-hello", {
+                    payload: newData,
                     signature: newSignature
                 }
             );
@@ -157,34 +169,24 @@ io.on("connection", function (socket) {
         }
         console.log("invalid client hello");
     });
-
     socket.on("chat", function (message) {
-        sendToRoom(currentRoom[socket.id], "push message", message);
+        const payload = handle(message, socket.id);
+        payload.sender = nicknames.get(socket.id);
+        sendToRoom(currentRoom[socket.id], "push-message", payload);
     });
     socket.on("whisper", function (message) {
-        const sessionKey = getSessionKey(socket.id);
-        if (message.encrypted)
-            message.text = CryptoUtil.AES256Decipher(message.text, sessionKey);
-        let recipientId = nicknames.getSocketId(message.recipient);
-        sendToSocket(recipientId, "push message", message)
+        const payload = handle(message, socket.id);
+        const recipientId = nicknames.getSocketId(payload.recipient);
+        payload.sender = nicknames.get(socket.id);
+        if (recipientId !== socket.id)
+            sendToSocket(recipientId, "push-message", payload);
+        sendToSocket(socket.id, "whisper-ack", payload);
     });
-    socket.on("base64 chat", function (file) {
-        file.sender = nicknames.get(socket.id);
-        sendToRoom(currentRoom[socket.id], "push base64", file);
+    socket.on("name-attempt", function (name) {
+        changeName(socket, handle(name, socket.id));
     });
-    socket.on("base64 whisper", function (file) {
-        const sessionKey = getSessionKey(socket.id);
-        file.sender = nicknames.get(socket.id);
-        if (file.encrypted)
-            file.data = CryptoUtil.AES256Decipher(file.data, sessionKey);
-        let recipientId = nicknames.getSocketId(file.recipient);
-        sendToSocket(recipientId, "push base64", file);
-    });
-    socket.on("name attempt", function (name) {
-        changeName(socket, name);
-    });
-    socket.on("room attempt", function (room) {
-        joinRoom(socket, room);
+    socket.on("room-attempt", function (room) {
+        joinRoom(socket, handle(room, socket.id));
     });
     socket.on("disconnect", function () {
         sendToRoom(currentRoom[socket.id], "message", {

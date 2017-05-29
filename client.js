@@ -1,28 +1,30 @@
-const SERVER_ADDR = "http://45.78.16.129:8088";
+const SERVER_ADDR = "http://localhost:8088";
 
 const $ = require("jquery");
-const cryptoUtil = require("./CryptoUtil.js");
+const cryptoUtil = require("./cryptoUtil.js");
 const io = require("socket.io-client");
+const msgHandler = require("./clientUtil");
 
 const SERVER_KEY = cryptoUtil.importKey(`-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3
 mrVSIqUXrNoK7k38md/9vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQ==
 -----END PUBLIC KEY-----`);
 
+const broadcast = "Broadcast";
+
 $(function () {
-    let sessionKey = null;
 
     const socket = io(SERVER_ADDR);
 
-    const broadcast = "Broadcast";
-
     const key = cryptoUtil.generateRSAKeyPair();
-    const randomBytes = cryptoUtil.randomBytes();
-    const randomN = Math.round(Math.random() * 1000);
 
-    let getSessionKey = function () {
-        return sessionKey;
-    };
+    let __sessionKey = null;
+
+    function sessionKey(key) {
+        if (key)
+            __sessionKey = key;
+        return __sessionKey;
+    }
 
     function append(element) {
         const container = $("#dialogue-container");
@@ -38,15 +40,15 @@ $(function () {
             return "images/avatar2.jpeg";
     }
 
-    function createMessage(user, text) {
+    function createMessage(name, text) {
         const li = $("<li>");
         // li.append($("<p>").addClass("time").append($("<span>").text("10:45")));
         const div = $("<div>");
-        if (user === nickName())
+        if (name === nickName())
             div.addClass("main self");
         else
             div.addClass("main");
-        div.append($("<img>").addClass("avatar").attr('src', getAvatar(user))).append($("<div>").addClass("text").html(text));
+        div.append($("<img>").addClass("avatar").attr('src', getAvatar(name))).append($("<div>").addClass("text").html(text));
         li.append(div);
         return li;
     }
@@ -70,81 +72,78 @@ $(function () {
     }
 
     socket.on("connect", function () {
-        console.log("connected to server: " + socket.id);
-
-        const data = SERVER_KEY.encrypt({
-            key: key.exportKey("public"),
-            bytes: randomBytes,
-            n: randomN
-        }, "base64");
-        const signature = key.encryptPrivate(cryptoUtil.hashcode(data), "base64");
-
-        socket.emit("client hello", {
-                data: data,
-                signature: signature
-            }
-        );
+        msgHandler.handler["connect"](socket, SERVER_KEY, key);
+        msgHandler.requester["client-hello"]();
     });
 
-    socket.on("server hello", function (msg) {
-        const data = JSON.parse(key.decrypt(msg.data, "utf8"));
-        const hash = SERVER_KEY.decryptPublic(msg.signature, "utf8");
-        if (cryptoUtil.hashcode(msg.data) === hash) {
-            if (randomN - 1 === data.n) {
-                sessionKey = cryptoUtil.generateSessionKey(randomBytes, Buffer.from(data.bytes));
-                return;
-            }
+    socket.on("server-hello", function (data) {
+        const key = msgHandler.handler["server-hello"](data);
+        sessionKey(key);
+    });
+
+    function display(msg) {
+        switch (msg.type) {
+            case "file":
+                fetch(msg.data).then((res) => res.blob()).then((blob) => {
+                    append(createDownload(msg.sender, msg.fileName, blob));
+                });
+                break;
+            case "text":
+                append(createMessage(msg.sender, msg.text));
+                break;
+            default:
+                console.error("unsupported message type: " + msg.type);
         }
-        console.log("invalid server hello");
+    }
+
+    socket.on("push-message", function (data) {
+        const msg = msgHandler.handler.handle(data);
+        display(msg);
     });
 
-    socket.on("push message", function (msg) {
-        if (msg.encrypted)
-            msg.text = cryptoUtil.AES256Decipher(msg.text, getSessionKey());
-        append(createMessage(msg.sender, msg.text));
+    socket.on("whisper-ack", function (data) {
+        const msg = msgHandler.handler.handle(data);
+        display(msg);
     });
 
-    socket.on("push base64", function (file) {
-        if (file.encrypted)
-            file.data = cryptoUtil.AES256Decipher(file.data, getSessionKey());
-        fetch(file.data).then((res) => res.blob()).then((blob) => {
-            append(createDownload(file.sender, file.name, blob));
-        });
-    });
-
-    socket.on("name result", function (data) {
-        if (data.success) {
-            if (data.oldName === nickName() || !data.oldName) {
-                nickName(data.newName);
-                append(createMsg("Your name is now " + data.newName));
+    socket.on("name-result", function (data) {
+        const result = msgHandler.handler.handle(data);
+        if (result.success) {
+            if (result.oldName === nickName() || !result.oldName) {
+                nickName(result.newName);
+                append(createMsg("Your name is now " + result.newName));
             } else
-                append(createMsg(data.oldName + " is now known as " + data.newName));
+                append(createMsg(result.oldName + " is now known as " + result.newName));
         }
         else
-            append(createMsg("Rename failed, " + data.message));
+            append(createMsg("Rename failed, " + result.message));
     });
 
-    socket.on("message", function (msg) {
+    socket.on("message", function (data) {
+        const msg = msgHandler.handler.handle(data);
         append(createMsg(msg.text));
     });
 
-    socket.on("user list", function (msg) {
+    socket.on("user-list", function (data) {
         const userList = $("#userList");
         const selected = userList.val();
+
+        const list = msgHandler.handler.handle(data);
         userList.empty().append("<option value=" + broadcast + ">" + broadcast + "</option>");
-        msg.forEach((m) => userList.append("<option value=" + m + ">" + m + "</option>"));
-        if (msg.includes(selected))
+        list.forEach((m) => userList.append("<option value=" + m + ">" + m + "</option>"));
+        if (list.includes(selected))
             userList.val(selected);
         else
             userList.val(broadcast);
     });
 
     socket.on("join-room", function (data) {
-        if (data.success) {
+        const result = msgHandler.handler.handle(data);
+        if (result.success) {
             $("#dialogue-container").html("");
-            $("#room-name").text(data.room);
+            $("#room-name").text(result.room);
         } else {
-            append(createMsg("Join " + data.room + " failed."));
+            append(createMsg("Join " + result.room + " failed."));
         }
     });
 
@@ -152,41 +151,7 @@ $(function () {
         const selectedUser = $("#userList").val();
         const inputText = $("#chatText");
         if (inputText.val() !== null && inputText.val() !== "") {
-            let words = inputText.val().split(" ");
-            let command = words[0].toLowerCase();
-            switch (command) {
-                case "\\join":
-                    words.shift();
-                    let room = words.join("");
-                    socket.emit("room attempt", room);
-                    break;
-                case "\\nick":
-                    words.shift();
-                    let name = words.join("");
-                    socket.emit("name attempt", name);
-                    break;
-                default:
-                    let message = words.join(" ");
-                    if (selectedUser === broadcast) {
-                        socket.emit("chat", {
-                            sender: nickName(),
-                            text: message,
-                            time: new Date().toLocaleString()
-                        });
-                    } else {
-                        if (selectedUser !== nickName()) {
-                            console.log(selectedUser, nickName(), selectedUser === nickName());
-                            socket.emit("whisper", {
-                                encrypted: true,
-                                recipient: selectedUser,
-                                sender: nickName(),
-                                text: cryptoUtil.AES256Cipher(message, getSessionKey()),
-                                time: new Date().toLocaleString()
-                            });
-                        }
-                        append(createMessage(nickName(), message));
-                    }
-            }
+            msgHandler.requester["text-message"](inputText.val(), selectedUser);
             inputText.val("");
         }
     });
@@ -199,29 +164,7 @@ $(function () {
             reader.onload = function (evt) {
                 const data = evt.target.result;
                 const fileName = files[0].name;
-                if (selectedUser === broadcast) {
-                    socket.emit("base64 chat", {
-                            name: fileName,
-                            data: data,
-                            time: new Date().toLocaleString()
-                        }
-                    );
-                }
-                else {
-                    if (selectedUser !== nickName()) {
-                        socket.emit("base64 whisper", {
-                                encrypted: true,
-                                recipient: selectedUser,
-                                name: fileName,
-                                data: cryptoUtil.AES256Cipher(data, getSessionKey()),
-                                time: new Date().toLocaleString()
-                            }
-                        );
-                    }
-                    fetch(data).then((res) => res.blob()).then((blob) => {
-                        append(createDownload(nickName(), fileName, blob));
-                    });
-                }
+                msgHandler.requester["file-message"](data, fileName, selectedUser);
             };
             reader.readAsDataURL(files[0]);
         }
@@ -238,3 +181,5 @@ $(function () {
         }
     });
 });
+
+module.exports.broadcast = broadcast;
