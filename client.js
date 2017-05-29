@@ -18,14 +18,6 @@ $(function () {
 
     const key = cryptoUtil.generateRSAKeyPair();
 
-    let __sessionKey = null;
-
-    function sessionKey(key) {
-        if (key)
-            __sessionKey = key;
-        return __sessionKey;
-    }
-
     function append(element) {
         const container = $("#dialogue-container");
         container.append(element);
@@ -77,8 +69,7 @@ $(function () {
     });
 
     socket.on("server-hello", function (data) {
-        const key = msgHandler.handler["server-hello"](data);
-        sessionKey(key);
+        msgHandler.handler["server-hello"](data);
     });
 
     function display(msg) {

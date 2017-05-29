@@ -33,13 +33,10 @@ module.exports = {
         "server-hello": function (data) {
             const payload = JSON.parse(__privateKey.decrypt(data.payload, "utf8"));
             const hash = __serverKey.decryptPublic(data.signature, "utf8");
-            if (cryptoUtil.hashcode(data.payload) === hash) {
-                if (__randomN - 1 === payload.n) {
-                    __sessionKey = cryptoUtil.generateSessionKey(__randomBytes, Buffer.from(payload.bytes));
-                    return __sessionKey;
-                }
-            }
-            console.log("invalid server hello");
+            if (cryptoUtil.hashcode(data.payload) === hash && __randomN - 1 === payload.n)
+                __sessionKey = cryptoUtil.generateSessionKey(__randomBytes, Buffer.from(payload.bytes));
+            else
+                console.log("invalid server hello");
         },
 
         "handle": function (data) {

@@ -3,9 +3,9 @@ const app = new Koa();
 const io = require("socket.io").listen(8088);
 const fs = require("fs");
 
-const CryptoUtil = require("./cryptoUtil");
+const cryptoUtil = require("./cryptoUtil");
 
-const KEY = CryptoUtil.importKey(`-----BEGIN RSA PRIVATE KEY-----
+const KEY = cryptoUtil.importKey(`-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3mrVSIqUXrNoK7k38md/9
 vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQJAHuAjMLQmLURmpBatXOr1
 YMd28cSqMRcYrtMjZQhxc+n/J9OIvBerdbvN7RxG3sGX5/Eca97JQTuGhV3hGtcb
@@ -116,7 +116,7 @@ function wrapData(data, key) {
     const wrappedData = {payload: JSON.stringify(data)};
     if (key) {
         wrappedData.encrypted = true;
-        wrappedData.payload = CryptoUtil.AES256Cipher(wrappedData.payload, key);
+        wrappedData.payload = cryptoUtil.AES256Cipher(wrappedData.payload, key);
     }
     return wrappedData;
 }
@@ -129,7 +129,7 @@ function sendToSocket(socketId, type, data) {
 function handle(data, socketId) {
     if (data.payload) {
         if (data.encrypted)
-            return JSON.parse(CryptoUtil.AES256Decipher(data.payload, getSessionKey(socketId)));
+            return JSON.parse(cryptoUtil.AES256Decipher(data.payload, getSessionKey(socketId)));
         return JSON.parse(data.payload);
     }
     else return data;
@@ -145,12 +145,12 @@ io.on("connection", function (socket) {
 
     socket.on("client-hello", function (data) {
         const payload = JSON.parse(KEY.decrypt(data.payload, "utf8"));
-        const clientKey = CryptoUtil.importKey(payload.key);
+        const clientKey = cryptoUtil.importKey(payload.key);
         const hash = clientKey.decryptPublic(data.signature, "utf8");
-        const randomBytes = CryptoUtil.randomBytes();
+        const randomBytes = cryptoUtil.randomBytes();
 
-        if (CryptoUtil.hashcode(data.payload) === hash) {
-            const sessionKey = CryptoUtil.generateSessionKey(Buffer.from(payload.bytes), randomBytes);
+        if (cryptoUtil.hashcode(data.payload) === hash) {
+            const sessionKey = cryptoUtil.generateSessionKey(Buffer.from(payload.bytes), randomBytes);
             sessionKeys.set(socket.id, sessionKey);
 
             const newData = clientKey.encrypt({
@@ -158,7 +158,7 @@ io.on("connection", function (socket) {
                 n: payload.n - 1
             }, "base64");
 
-            const newSignature = KEY.encryptPrivate(CryptoUtil.hashcode(newData), "base64");
+            const newSignature = KEY.encryptPrivate(cryptoUtil.hashcode(newData), "base64");
 
             socket.emit("server-hello", {
                     payload: newData,
