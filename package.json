@@ -1,6 +1,11 @@
 {
   "name": "CPChat",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "A simple encrypted chat application",
+  "scripts": {
+    "start": "node server"
+  },
+  "author": "wujm2007",
   "dependencies": {
     "koa": "2.2.0",
     "koa-static": "3.0.0",
