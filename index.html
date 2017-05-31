@@ -4,28 +4,54 @@
 <head>
     <meta charset="UTF-8">
     <title>CPChat</title>
-    <script type=text/javascript src="js/bundle.js"></script>
     <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/title-bar.css">
+    <script type=text/javascript src="js/bundle.js"></script>
 </head>
 
 <body>
-<div id="chat">
+<div id="chat" class="noselect">
+    <div class="sidebar">
+
+        <div class="browser">
+            <div class="title-bar">
+                <div class="btns">
+                    <div class="close"></div>
+                    <div class="min"></div>
+                    <div class="max"></div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <header><img class="avatar" :alt="nickName" src="images/avatar1.jpeg">
+                <p class="name">{{ nickName }}</p></header>
+            <footer><input class="search" type="text" placeholder="search user..."></footer>
+        </div>
+        <div class="list">
+            <ul>
+                <li v-for="user in users" :class="{ 'active': user === selectedUser }"
+                    v-on:click="select(user)">
+                    <img class="avatar" :alt="user" src="images/avatar1.jpeg"
+                         v-if="user === nickName">
+                    <img class="avatar" :alt="user" src="images/avatar2.jpeg" v-else>
+                    <p class="name">{{ user }}</p>
+                </li>
+            </ul>
+        </div>
+    </div>
+
     <div class="main">
         <div class="m-header">
             <span id="room-name">Room</span>
         </div>
         <div class="m-message">
             <ul id="dialogue-container">
-                <li>
-                    <p class="time"><span>10:44</span></p>
-                    <div class="main"><img class="avatar" src="images/avatar2.jpeg">
-                        <div class="text">啦啦啦</div>
-                    </div>
-                </li>
-                <li>
-                    <p class="time"><span>10:45</span></p>
-                    <div class="main self"><img class="avatar" src="images/avatar1.jpeg">
-                        <div class="text">嘿嘿</div>
+                <li v-for="msg in messages">
+                    <div class="main" :class="{ 'self': msg.sender === nickName }">
+                        <img class="avatar" :alt="msg.sender" src="images/avatar1.jpeg"
+                             v-if="msg.sender === nickName">
+                        <img class="avatar" :alt="msg.sender" src="images/avatar2.jpeg" v-else>
+                        <div class="text" v-html="msg.text">{{ msg.text }}</div>
                     </div>
                 </li>
             </ul>
@@ -41,7 +67,11 @@
                     </div>
                 </a>
                 <div class="select-style" style="display: inline-block; margin-left: 8px;">
-                    <select id="userList"></select>
+                    <select id="userList">
+                        <option v-for="user in userList">
+                            {{ user }}
+                        </option>
+                    </select>
                 </div>
             </div>
             <textarea id="chatText"></textarea>
@@ -53,8 +83,4 @@
     </div>
 </div>
 </body>
-<script>
-    // You can also require other files to run in this process
-    //    require('./renderer.js')
-</script>
 </html>

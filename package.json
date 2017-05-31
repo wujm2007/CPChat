@@ -12,7 +12,8 @@
     "socket.io": "2.0.1",
     "socket.io-client": "2.0.1",
     "jquery": "3.2.1",
-    "node-rsa": "latest"
+    "node-rsa": "latest",
+    "vue": "^2.3.3"
   },
   "devDependencies": {
   }

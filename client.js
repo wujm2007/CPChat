@@ -4,6 +4,7 @@ const $ = require("jquery");
 const cryptoUtil = require("./cryptoUtil.js");
 const io = require("socket.io-client");
 const msgHandler = require("./clientUtil");
+const Vue = require("vue/dist/vue.js");
 
 const SERVER_KEY = cryptoUtil.importKey(`-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3
@@ -14,53 +15,61 @@ const broadcast = "Broadcast";
 
 $(function () {
 
+    function nickName(newName) {
+        if (newName)
+            appChat.nickName = newName;
+        return appChat.nickName;
+    }
+
+    const messages = new Map();
+
+    messages.add = function (sender, recipient, text) {
+        const key = sender === nickName() ? recipient : recipient === broadcast ? broadcast : sender;
+        if (!messages.has(key)) {
+            messages.set(key, []);
+            appChat.update();
+        }
+        messages.get(key).push({sender: sender, recipient: recipient, text: text});
+        if (sender === nickName())
+            appChat.select(recipient);
+    };
+
+    let appChat = new Vue({
+        el: '#chat',
+        data: {
+            nickName: null,
+            messages: null,
+            users: null,
+            selectedUser: null,
+            userList: null,
+        },
+        methods: {
+            select: function (user) {
+                this.selectedUser = user;
+                this.messages = messages.get(this.selectedUser);
+
+                // deal with asynchronous update
+                this.$nextTick(function () {
+                    const container = $("#dialogue-container").parent();
+                    container.scrollTop(container[0].scrollHeight);
+                });
+
+                $("#userList").val(this.selectedUser);
+                return this.selectedUser;
+            },
+            update: function () {
+                this.users = Array.from(messages.keys());
+            }
+        }
+    });
+
     const socket = io(SERVER_ADDR);
 
     const key = cryptoUtil.generateRSAKeyPair();
 
-    function append(element) {
-        const container = $("#dialogue-container");
-        container.append(element);
-        const containerDiv = container.parent();
-        containerDiv.scrollTop(containerDiv[0].scrollHeight);
-    }
-
-    function getAvatar(user) {
-        if (user === nickName())
-            return "images/avatar1.jpeg";
-        else
-            return "images/avatar2.jpeg";
-    }
-
-    function createMessage(name, text) {
-        const li = $("<li>");
-        // li.append($("<p>").addClass("time").append($("<span>").text("10:45")));
-        const div = $("<div>");
-        if (name === nickName())
-            div.addClass("main self");
-        else
-            div.addClass("main");
-        div.append($("<img>").addClass("avatar").attr('src', getAvatar(name))).append($("<div>").addClass("text").html(text));
-        li.append(div);
-        return li;
-    }
-
-    function createMsg(text) {
-        const li = $("<li>");
-        li.addClass("alert").append($("<span>").text(text));
-        return li;
-    }
-
-    function createDownload(sender, fileName, blob) {
-        return createMessage(sender, $("<a>").text(fileName).attr("href", URL.createObjectURL(blob)).attr("download", fileName));
-    }
-
-    let __nickName = "Default User";
-
-    function nickName(newName) {
-        if (newName)
-            __nickName = newName;
-        return __nickName;
+    function createDownload(fileName, blob) {
+        const a = $("<a>").text(fileName).attr("href", URL.createObjectURL(blob)).attr("download", fileName);
+        return a.prop("outerHTML");
     }
 
     socket.on("connect", function () {
@@ -76,20 +85,46 @@ $(function () {
         switch (msg.type) {
             case "file":
                 fetch(msg.data).then((res) => res.blob()).then((blob) => {
-                    append(createDownload(msg.sender, msg.fileName, blob));
+                    messages.add(msg.sender, msg.recipient, createDownload(msg.fileName, blob));
                 });
                 break;
             case "text":
-                append(createMessage(msg.sender, msg.text));
+                messages.add(msg.sender, msg.recipient, msg.text);
+                break;
+            case "system":
+                messages.add(broadcast, nickName(), "System: " + msg.text);
                 break;
             default:
                 console.error("unsupported message type: " + msg.type);
         }
     }
 
+    function notify(msg) {
+        if (msg.sender !== nickName() && msg.recipient !== broadcast) {
+            let text;
+
+            switch (msg.type) {
+                case "file":
+                    text = msg.fileName;
+                    break;
+                case "text":
+                    text = msg.text;
+                    break;
+                default:
+                    console.error("unsupported message type: " + msg.type);
+                    return;
+            }
+
+            let newNotification = new Notification(msg.sender, {
+                body: text
+            })
+        }
+    }
+
     socket.on("push-message", function (data) {
         const msg = msgHandler.handler.handle(data);
         display(msg);
+        notify(msg);
     });
 
     socket.on("whisper-ack", function (data) {
@@ -102,39 +137,43 @@ $(function () {
         if (result.success) {
             if (result.oldName === nickName() || !result.oldName) {
                 nickName(result.newName);
-                append(createMsg("Your name is now " + result.newName));
-            } else
-                append(createMsg(result.oldName + " is now known as " + result.newName));
+                display({type: "system", text: "Your name is now " + result.newName});
+            } else {
+                display({type: "system", text: result.oldName + " is now known as " + result.newName});
+            }
+            if (messages.has(result.oldName)) {
+                const list = messages.get(result.oldName);
+                messages.delete(result.oldName);
+                messages.set(result.newName, list);
+                appChat.update();
+            }
         }
         else
-            append(createMsg("Rename failed, " + result.message));
+            display({type: "system", text: "Rename failed, " + result.message});
     });
 
     socket.on("message", function (data) {
         const msg = msgHandler.handler.handle(data);
-        append(createMsg(msg.text));
+        display({type: "system", text: msg.text});
     });
 
     socket.on("user-list", function (data) {
-        const userList = $("#userList");
-        const selected = userList.val();
-
         const list = msgHandler.handler.handle(data);
-        userList.empty().append("<option value=" + broadcast + ">" + broadcast + "</option>");
-        list.forEach((m) => userList.append("<option value=" + m + ">" + m + "</option>"));
-        if (list.includes(selected))
-            userList.val(selected);
-        else
-            userList.val(broadcast);
+        appChat.userList = [broadcast].concat(list);
+        appChat.users.forEach(function (u) {
+            if (!list.includes(u) && u !== broadcast)
+                messages.delete(u);
+        });
+        appChat.update();
     });
 
     socket.on("join-room", function (data) {
         const result = msgHandler.handler.handle(data);
         if (result.success) {
-            $("#dialogue-container").html("");
+            // $("#dialogue-container").html("");
             $("#room-name").text(result.room);
         } else {
-            append(createMsg("Join " + result.room + " failed."));
+            display({type: "system", text: "Join " + result.room + " failed."});
         }
     });
 
@@ -172,3 +211,5 @@ $(function () {
         }
     });
 });
+
+module.exports.broadcast = broadcast;

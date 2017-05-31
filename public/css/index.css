@@ -2,17 +2,20 @@
     box-sizing: border-box;
 }
 
+.noselect {
+    user-select: none;
+}
+
 body, html {
     overflow: hidden;
     height: 100%;
 }
 
 body {
-    background: #f5f5f5 url(../images/bg.jpg) no-repeat center;
-    background-size: cover;
     color: #4d4d4d;
     font-family: Helvetica Neue, Helvetica, Hiragino Sans GB, Microsoft YaHei, \\5fae\8F6F\96c5\9ED1, Arial, sans-serif;
     font-size: 10pt;
+    border-radius: 3px;
 }
 
 .m-message ul li div.main .avatar {
@@ -31,10 +34,8 @@ ul {
 
 #chat {
     overflow: hidden;
-    width: 95%;
-    height: 95%;
-    border-radius: 3px;
-    margin: 1.5% auto 3.5%;
+    width: 100%;
+    height: 100%;
 }
 
 #chat .main {
@@ -111,6 +112,7 @@ ul {
     line-height: 2.5;
     word-break: break-all;
     padding: 0 10px;
+    user-select: initial;
 }
 
 .m-message .text:before {
@@ -167,7 +169,7 @@ ul {
     display: inline-block;
     width: 30px;
     height: 30px;
-    background: url(../images/icon.png) no-repeat scroll 0 0 transparent;
+    background: url(../images/file.png) no-repeat scroll 0 0 transparent;
     cursor: pointer;
 }
 
@@ -238,4 +240,91 @@ a, button, input, textarea {
 
 .select-style select:focus {
     outline: none;
+}
+
+.main, .sidebar {
+    height: 100%
+}
+
+.sidebar {
+    float: left;
+    width: 200px;
+    color: #f4f4f4;
+    background-color: #2e3238
+}
+
+.sidebar .card .avatar {
+    width: 40px;
+    height: 40px;
+}
+
+.sidebar .list .avatar {
+    width: 30px;
+    height: 30px;
+}
+
+.card {
+    margin-top: 30px;
+    padding: 12px;
+    border-bottom: 1px solid #24272c
+}
+
+.card footer {
+    margin-top: 10px
+}
+
+.card .avatar, .card .name {
+    vertical-align: middle
+}
+
+.card .avatar {
+    border-radius: 2px
+}
+
+.card .name {
+    display: inline-block;
+    margin: 0 0 0 15px;
+    font-size: 16px
+}
+
+.card .search {
+    padding: 0 10px;
+    width: 100%;
+    font-size: 12px;
+    color: #fff;
+    height: 30px;
+    line-height: 30px;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    outline: none;
+    background-color: #26292e
+}
+
+.list li {
+    padding: 12px 15px;
+    border-bottom: 1px solid #292c33;
+    cursor: pointer;
+    -webkit-transition: background-color .1s;
+    transition: background-color .1s
+}
+
+.list li:hover {
+    background-color: hsla(0, 0%, 100%, .03)
+}
+
+.list li.active {
+    background-color: hsla(0, 0%, 100%, .1)
+}
+
+.list .avatar, .list .name {
+    vertical-align: middle
+}
+
+.list .avatar {
+    border-radius: 2px
+}
+
+.list .name {
+    display: inline-block;
+    margin: 0 0 0 15px
 }
