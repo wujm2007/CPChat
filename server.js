@@ -5,6 +5,8 @@ const fs = require("fs");
 
 const cryptoUtil = require("./cryptoUtil");
 
+const broadcast = "Broadcast";
+
 const KEY = cryptoUtil.importKey(`-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3mrVSIqUXrNoK7k38md/9
 vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQJAHuAjMLQmLURmpBatXOr1
@@ -172,6 +174,7 @@ io.on("connection", function (socket) {
     socket.on("chat", function (message) {
         const payload = handle(message, socket.id);
         payload.sender = nicknames.get(socket.id);
+        payload.recipient = broadcast;
         sendToRoom(currentRoom[socket.id], "push-message", payload);
     });
     socket.on("whisper", function (message) {

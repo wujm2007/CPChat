@@ -172,5 +172,3 @@ $(function () {
         }
     });
 });
-
-module.exports.broadcast = broadcast;

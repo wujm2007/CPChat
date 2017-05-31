@@ -1,7 +1,3 @@
-/**
- * Created by jameswu on 2017/5/6.
- */
-
 const crypto = require('crypto');
 const NodeRSA = require('node-rsa');
 
