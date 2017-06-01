@@ -1,5 +1,10 @@
 const cryptoUtil = require("./cryptoUtil.js");
 
+const SERVER_KEY = cryptoUtil.importKey(`-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIkL4Lx9lEjL09SblZrsXF+41r0ncaX3
+mrVSIqUXrNoK7k38md/9vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQ==
+-----END PUBLIC KEY-----`);
+
 let __socket, __serverKey, __privateKey, __randomBytes, __randomN, __sessionKey;
 
 function send(socket, type, data, encryptType) {
@@ -23,8 +28,10 @@ function wrapData(data, encryptType) {
 
 module.exports = {
     handler: {
-        "connect": function (socket, serverKey, privateKey) {
-            [__socket, __serverKey, __privateKey] = [socket, serverKey, privateKey];
+        "connect": function (socket) {
+            __socket = socket;
+            __serverKey = SERVER_KEY;
+            __privateKey = cryptoUtil.generateRSAKeyPair();
             __randomBytes = cryptoUtil.randomBytes();
             __randomN = Math.round(Math.random() * 1000);
             console.log("connected to server: " + __socket.id);
