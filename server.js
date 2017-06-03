@@ -18,10 +18,9 @@ XacabSW3LnrN7kQ4K5WAFTToouTvgZPDmlbc02ejlQ==
 -----END RSA PRIVATE KEY-----`);
 
 let numGuest = 0;
-let nicknames = new Map();
-let namesUsed = new Set();
-let currentRoom = {};
-let sessionKeys = new Map();
+const nicknames = new Map();
+const currentRoom = new Map();
+const sessionKeys = new Map();
 
 nicknames.getSocketId = function (nickname) {
     for (let [key, value] of nicknames)
@@ -55,7 +54,6 @@ function assignGuestName(socket) {
     if (!name) {
         name = "Guest" + numGuest++;
         nicknames.set(socket.id, name);
-        namesUsed.add(name);
     }
     sendToSocket(socket.id, "name-result", {
         success: true,
@@ -71,12 +69,10 @@ function changeName(socket, name) {
             message: "Names cannot begin with \"Guest\"."
         });
     } else {
-        if (!namesUsed.has(name)) {
+        if (!nicknames.getSocketId(name)) {
             let oldName = nicknames.get(socket.id);
-            namesUsed.add(name);
             nicknames.set(socket.id, name);
-            namesUsed.delete(oldName);
-            sendToRoom(currentRoom[socket.id], "name-result", {
+            sendToRoom(currentRoom.get(socket.id), "name-result", {
                 success: true,
                 oldName: oldName,
                 newName: name
@@ -92,17 +88,17 @@ function changeName(socket, name) {
 }
 
 function joinRoom(socket, room) {
-    socket.leave(currentRoom[socket.id]);
+    socket.leave(currentRoom.get(socket.id));
     socket.join(room);
-    currentRoom[socket.id] = room;
+    currentRoom.set(socket.id, room);
 
     sendToSocket(socket.id, "join-room", {
         success: true,
-        room: currentRoom[socket.id]
+        room: currentRoom.get(socket.id)
     });
 
-    sendToRoom(currentRoom[socket.id], "message", {
-        text: currentRoom[socket.id] + " : Welcome " + nicknames.get(socket.id) + "."
+    sendToRoom(currentRoom.get(socket.id), "message", {
+        text: currentRoom.get(socket.id) + " : Welcome " + nicknames.get(socket.id) + "."
     });
 }
 
@@ -175,7 +171,7 @@ io.on("connection", function (socket) {
         const payload = handle(message, socket.id);
         payload.sender = nicknames.get(socket.id);
         payload.recipient = broadcast;
-        sendToRoom(currentRoom[socket.id], "push-message", payload);
+        sendToRoom(currentRoom.get(socket.id), "push-message", payload);
     });
     socket.on("whisper", function (message) {
         const payload = handle(message, socket.id);
@@ -192,8 +188,8 @@ io.on("connection", function (socket) {
         joinRoom(socket, handle(room, socket.id));
     });
     socket.on("disconnect", function () {
-        sendToRoom(currentRoom[socket.id], "message", {
-            text: currentRoom[socket.id] + " : Bye " + nicknames.get(socket.id) + "."
+        sendToRoom(currentRoom.get(socket.id), "message", {
+            text: currentRoom.get(socket.id) + " : Bye " + nicknames.get(socket.id) + "."
         });
         nicknames.delete(socket.id);
         sendUserList();

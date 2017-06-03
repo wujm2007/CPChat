@@ -23,16 +23,16 @@
             </div>
         </div>
         <div class="card">
-            <header><img class="avatar" :alt="nickName" src="images/avatar1.jpeg">
-                <p class="name">{{ nickName }}</p></header>
-            <footer><input class="search" type="text" placeholder="search user..." v-model="keyword"></footer>
+            <header><img class="avatar" :alt="nickname" src="images/avatar1.jpeg">
+                <p class="name">{{ nickname }}</p></header>
+            <footer><input class="search" type="text" placeholder="搜素用户" v-model="keyword"></footer>
         </div>
         <div class="list">
             <ul>
                 <li v-for="user in filteredUsers" :class="{ active: user === selectedUser }"
                     @click="selectedUser = user">
                     <img class="avatar" :alt="user"
-                         :src="user === nickName? 'images/avatar1.jpeg':'images/avatar2.jpeg'">
+                         :src="user === nickname? 'images/avatar1.jpeg':'images/avatar2.jpeg'">
                     <p class="name">{{ user }}</p>
                 </li>
             </ul>
@@ -45,7 +45,7 @@
         </div>
         <div class="m-message">
             <ul id="dialogue-container">
-                <li v-for="msg in messages">
+                <li v-for="msg in chatMessages">
                     <div class="main" :class="{ 'self': msg.self }">
                         <img class="avatar" :alt="msg.sender"
                              :src="msg.self? 'images/avatar1.jpeg':'images/avatar2.jpeg'">
@@ -65,12 +65,12 @@
                     </div>
                 </a>
                 <div class="select-style" style="display: inline-block; margin-left: 8px;">
-                    <select id="userList" v-model="selectedUser">
+                    <select id="user-list" v-model="selectedUser">
                         <option v-for="user in userList">{{ user }}</option>
                     </select>
                 </div>
             </div>
-            <textarea id="chatText" v-model="chatText" @keypress="textEnter"></textarea>
+            <textarea id="text-input" v-model="textInput" @keypress="textEnter"></textarea>
             <div class="action">
                 <span class="desc">按下Ctrl+Enter换行</span>
                 <a class="btn btn_send" id="btnText" @click="textBtnClick">发送</a>

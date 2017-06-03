@@ -211,7 +211,7 @@ a, button, input, textarea {
     font-size: 9pt;
 }
 
-#chatText {
+#text-input {
     padding-left: 19px;
     white-space: pre-wrap;
     word-break: normal;

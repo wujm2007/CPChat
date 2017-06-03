@@ -7,6 +7,8 @@ mrVSIqUXrNoK7k38md/9vl2W5nAeGe5d6c4WlALxjH8KzBqa90o4WUUCAwEAAQ==
 
 let __socket, __serverKey, __privateKey, __randomBytes, __randomN, __sessionKey;
 
+const broadcast = "Broadcast";
+
 function send(socket, type, data, encryptType) {
     if (socket)
         socket.emit(type, wrapData(data, encryptType));
@@ -27,7 +29,8 @@ function wrapData(data, encryptType) {
 }
 
 module.exports = {
-    handler: {
+    broadcast: broadcast,
+    msgHandler: {
         "connect": function (socket) {
             __socket = socket;
             __serverKey = SERVER_KEY;
@@ -56,7 +59,7 @@ module.exports = {
         }
     },
 
-    requester: {
+    msgRequester: {
         "client-hello": function () {
             const payload = __serverKey.encrypt({
                 key: __privateKey.exportKey("public"),
@@ -83,7 +86,7 @@ module.exports = {
                     break;
                 default:
                     const message = words.join(" ");
-                    if (recipient === require("./client").broadcast) {
+                    if (recipient === broadcast) {
                         send(__socket, "chat", {
                             type: "text",
                             text: message
@@ -99,7 +102,7 @@ module.exports = {
         },
 
         "file-message": function (data, fileName, recipient) {
-            if (recipient === require("./client").broadcast) {
+            if (recipient === broadcast) {
                 send(__socket, "chat", {
                     type: "file",
                     fileName: fileName,
